@@ -2,7 +2,8 @@
 const fs = require('fs');
 const HDWalletProvider = require('truffle-hdwallet-provider');
 
-const CafeFactory = require('./build/CafeFactory.json');
+const CafeRouter02 = require('./build/CafeRouter02.json');
+const WBNB = require('./buildV1/WBNB.json');
 
 function get_data(_message) {
   return new Promise(function(resolve, reject) {
@@ -47,20 +48,33 @@ var URL = "";
   let accounts = await web3.eth.getAccounts();
   console.log(`accounts: ${JSON.stringify(accounts)}`);
 
-  // Factory deployment
-  let cafeFactory;
-  cafeFactory = await new web3.eth.Contract(CafeFactory.abi)
+  let wETH;
+  wETH = await new web3.eth.Contract(WBNB.abi).deploy({
+                            data: "0x" + WBNB.evm.bytecode.object
+                          })
+                          .send({
+                            from: accounts[0]
+                          })
+
+  console.log(`\WBNB contract deployed at ${wETH.options.address}`);
+  console.log(`Please store this wrapper wETH address for future use ^^^`);
+  data_object.contract_address.weth = wETH.options.address;
+
+  let cafeRouter02;
+  cafeRouter02 = await new web3.eth.Contract(CafeRouter02.abi)
                           .deploy({
-                            data: CafeFactory.evm.bytecode.object, 
-                            arguments: [accounts[0]]})
+                            data: "0x" + CafeRouter02.evm.bytecode.object, 
+                            arguments: [
+                              data_object.contract_address.cafe_factory,
+                              data_object.contract_address.weth]})
                           .send({
                             from: accounts[0],
                             gas: 5000000,
                             gasPrice: 20000000000,
                           })
-  console.log(`\nFactory contract deployed at ${cafeFactory.options.address}`);
-  console.log(`Please store this factory address for future use ^^^`);
-  data_object.contract_address.cafe_factory = cafeFactory.options.address;
+  console.log(`\nCafeRouter02 contract deployed at ${cafeRouter02.options.address}`);
+  console.log(`Please store this router address for future use ^^^`);
+  data_object.contract_address.cafe_router_02 = cafeRouter02.options.address;
 
   let data_to_write = JSON.stringify(data_object, null, 2);
   await write_data(data_to_write);
